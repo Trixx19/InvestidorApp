@@ -6,33 +6,26 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.core.app.ActivityCompat
-import androidx.lifecycle.viewmodel.compose.viewModel // Importe o viewModel para usar no setContent
-import com.example.investidorapp.ui.view.InvestidorScreen // Importe a sua tela Compose
-import com.example.investidorapp.viewmodel.InvestimentosViewModel // Importe o seu ViewModel
-import com.example.investidorapp.ui.theme.InvestidorappTheme // Importe o tema do seu aplicativo (se estiver usando)
-
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.investidorapp.ui.view.InvestidorScreen
+import com.example.investidorapp.viewmodel.InvestimentosViewModel
 
 class MainActivity : ComponentActivity() {
-    override fun onCreate(savedInstanceState : Bundle?) {
-        super.onCreate(savedInstanceState )
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES .TIRAMISU) {
-            ActivityCompat .requestPermissions(
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ActivityCompat.requestPermissions(
                 this,
                 arrayOf(Manifest.permission.POST_NOTIFICATIONS),
                 101
             )
         }
         setContent {
+            // O tema foi removido daqui porque já é aplicado no nível do Composable InvestidorScreen
             val viewModel: InvestimentosViewModel = viewModel()
-            InvestidorScreen (viewModel)
+            InvestidorScreen(viewModel)
         }
     }
 }
 
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    InvestidorappTheme {
-        Greeting("Android")
-    }
-}
+// CORREÇÃO: A função GreetingPreview foi removida para corrigir os erros de referência.

@@ -1,28 +1,15 @@
 package com.example.investidorapp.ui.view
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.ShoppingCart
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -41,6 +28,7 @@ import com.example.investidorapp.viewmodel.InvestimentosViewModel
 @Composable
 fun InvestidorScreen(viewModel: InvestimentosViewModel = viewModel()) {
     val investimentos by viewModel.investimentos.collectAsState()
+    val inAppNotificationMessage by viewModel.inAppNotification.collectAsState()
 
     Scaffold(
         topBar = {
@@ -53,20 +41,66 @@ fun InvestidorScreen(viewModel: InvestimentosViewModel = viewModel()) {
             )
         }
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            ListaInvestimentos(investimentos = investimentos)
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                ListaInvestimentos(investimentos = investimentos)
+            }
+
+            AnimatedVisibility(
+                visible = inAppNotificationMessage != null,
+                enter = slideInVertically(initialOffsetY = { -it }),
+                exit = slideOutVertically(targetOffsetY = { -it }),
+                modifier = Modifier.align(Alignment.TopCenter)
+            ) {
+                InAppNotificationBanner(message = inAppNotificationMessage ?: "")
+            }
         }
     }
 }
 
 @Composable
+fun InAppNotificationBanner(message: String) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.Notifications,
+                contentDescription = "Notificação",
+                // Usará a cor primária do seu tema
+                tint = MaterialTheme.colorScheme.primary
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Column {
+                Text(
+                    text = "Investimento Atualizado",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(text = message, style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+    }
+}
+
+
+@Composable
 fun ListaInvestimentos(investimentos: List<Investimento>) {
     if (investimentos.isEmpty()) {
-        Box( // mensagem se não houver investimentos
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(16.dp),
@@ -127,6 +161,7 @@ fun InvestimentoItem(investimento: Investimento) {
         }
     }
 }
+
 @Preview(showBackground = true)
 @Composable
 fun InvestimentoItemPreview() {

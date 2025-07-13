@@ -8,70 +8,84 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.util.Log
-import androidx.lifecycle.AndroidViewModel
-import com.example.investidorapp.MainActivity // Certifique-se que o caminho para sua MainActivity está correto
-import com.example.investidorapp.R // Importe a classe R para acessar os recursos
-import com.example.investidorapp.model.Investimento // Importe a classe Investimento
-import com.google.firebase.database.ChildEventListener
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.ValueEventListener
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.investidorapp.MainActivity
+import com.example.investidorapp.R
+import com.example.investidorapp.model.Investimento
+import com.google.firebase.database.*
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
 class InvestimentosViewModel(application: Application) : AndroidViewModel(application) {
     private val database = FirebaseDatabase.getInstance().reference.child("investimentos")
     private val _investimentos = MutableStateFlow<List<Investimento>>(emptyList())
     val investimentos: StateFlow<List<Investimento>> = _investimentos
+
+    private val _inAppNotification = MutableStateFlow<String?>(null)
+    val inAppNotification: StateFlow<String?> = _inAppNotification.asStateFlow()
+    private var notificationJob: Job? = null
+
     init {
         monitorarAlteracoes()
     }
+
     private fun monitorarAlteracoes() {
         database.addChildEventListener(object : ChildEventListener {
             override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
                 val nome = snapshot.child("nome").getValue(String::class.java) ?: "Desconhecido"
-                val valor = snapshot.child("valor").getValue(Int::class.java) ?: 0
+                val valor = snapshot.child("valor").getValue(Double::class.java) ?: 0.0
                 Log.d("FirebaseData", "Investimento atualizado: $nome - R$ $valor")
-// Enviar notificação local
-                enviarNotificacao("Investimento Atualizado", "$nome agora vale R$ $valor")
-// Atualizar os dados
+
+                val notificationMessage = "$nome agora vale R$ $valor"
+
+                showInAppNotification(notificationMessage)
+
+                // Envia a notificação do sistema
+                enviarNotificacao("Investimento Atualizado", notificationMessage)
+
                 carregarInvestimentos()
             }
-            override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
-                carregarInvestimentos()
-            }
-            override fun onChildRemoved(snapshot: DataSnapshot) {
-                carregarInvestimentos()
-            }
+            override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) { carregarInvestimentos() }
+            override fun onChildRemoved(snapshot: DataSnapshot) { carregarInvestimentos() }
             override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {}
-            override fun onCancelled(error: DatabaseError) {
-                Log.e("FirebaseError", "Erro ao monitorar alterações: ${error.message}")
-            }
+            override fun onCancelled(error: DatabaseError) { Log.e("FirebaseError", "Erro: ${error.message}") }
         })
     }
+
     private fun carregarInvestimentos() {
         database.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val lista = mutableListOf<Investimento>()
                 for (item in snapshot.children) {
                     val nome = item.child("nome").getValue(String::class.java) ?: "Desconhecido"
-                    val valor = item.child("valor").getValue(Int::class.java) ?: 0
+                    val valor = item.child("valor").getValue(Double::class.java) ?: 0.0
                     lista.add(Investimento(nome, valor))
                 }
                 _investimentos.value = lista
             }
-            override fun onCancelled(error: DatabaseError) {
-                Log.e("FirebaseError", "Erro ao carregar investimentos: ${error.message}")
-            }
+            override fun onCancelled(error: DatabaseError) { Log.e("FirebaseError", "Erro: ${error.message}") }
         })
     }
+
+    private fun showInAppNotification(message: String) {
+        notificationJob?.cancel() // Cancela a notificação anterior, se houver
+        notificationJob = viewModelScope.launch {
+            _inAppNotification.value = message
+            delay(4000) //
+            _inAppNotification.value = null
+        }
+    }
+
     private fun enviarNotificacao (titulo : String , mensagem : String ) {
         val channelId = "investimentos_notifications"
         val notificationId = (System .currentTimeMillis() % 10000 ).toInt()
-// Criação do canal de notificação (necessário para Android 8.0+)
         if (Build .VERSION .SDK_INT >= Build .VERSION_CODES .O) {
             val channel = NotificationChannel(
                 channelId ,
@@ -92,7 +106,7 @@ class InvestimentosViewModel(application: Application) : AndroidViewModel(applic
             PendingIntent .FLAG_ONE_SHOT or PendingIntent .FLAG_IMMUTABLE
         )
         val notification = NotificationCompat .Builder(getApplication(), channelId )
-            .setSmallIcon( R.drawable .ic_launcher_foreground)
+            .setSmallIcon( R.drawable .icon_investapp)
             .setContentTitle( titulo )
             .setContentText( mensagem )
             .setPriority( NotificationCompat .PRIORITY_HIGH)
